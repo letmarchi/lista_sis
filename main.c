@@ -131,27 +131,163 @@ double MultVetor(double *x, double *y, int t){
   return l;
 }
 
-double *Residuos(double **M, int m, int n, double *x){
-  int i;
-  double *r,*s;
+void TrocaLinha(double **k, double **l){
+  double *temp; 
 
-  r=malloc(m*sizeof(double *));
-  s=MultiVetMat(M, x, m, n);
-  for(i=0;i<m;i++)
-    r[i]=M[i][n-1]-s[i];
+  temp = *k;
+  *k = *l;
+  *l = temp;
+}
 
-  return r;
+void **LUPivot(double **M, double ***L, double ***U, double **b, int m, int n ){
+  int i, j, k, p;
+  double lbd, pivot;
+
+  *L = calloc(m, sizeof(double *));
+  for(i=0; i<m; i++) (*L)[i] = calloc(m, sizeof(double));
+
+  *U = malloc(m*sizeof(double *));
+  for(i=0; i<m; i++) (*U)[i] = malloc(m*sizeof(double));
+
+  *b = malloc(m*sizeof(double));
+  for(i=0; i<m; i++) (*b)[i] = M[i][n-1];
+
+  for(i=0; i<m; i++){
+    for(j=0; j<m; j++){
+      (*U)[i][j] = M[i][j];
+    }
+  }
+
+  for(j=0; j<m-1; j++){
+    pivot = (*U)[j][j];
+    p=0;
+
+      for(i=j+1; i<m; i++){
+        if(fabs((*U)[i][j])>pivot){
+          pivot=fabs((*U)[i][j]);
+          p=i;
+        }
+      }
+
+      if(p){
+        TrocaLinha(&(*U)[p], &(*U)[j]);
+        TrocaLinha(&(*L)[p], &(*L)[j]);
+        lbd=(*b)[p];
+        (*b)[p]=(*b)[j];
+        (*b)[j]=lbd;
+      }    
+
+    for(i=j+1; i<m; i++){
+      lbd=(*L)[i][j] = (*U)[i][j]/(*U)[j][j];
+      for(k=j; k<m; k++) (*U)[i][k] -= lbd*(*U)[j][k];
+    }
+  }
+  for(i=0; i<m; i++){
+    (*L)[i][i] = 1;
+  }
+}
+
+double *SubstituicaoDireta(double **M, int m, double *b){
+  double *v, sum; 
+  int i,j;
+
+  v = malloc(m* sizeof(double));
+
+  for(i=0; i<m; i++){
+    sum = 0;
+    for(j=i-1; j>=0; j--){
+      sum+= M[i][j]*v[j];
+    }
+    v[i] = (b[i] - sum)/M[i][i];
+  }
+  return  v;
+}
+
+double *SubstituicaoReversa(double **M, int m, double *b){
+  double *v,sum;
+  int i,j;
+
+  v = malloc(m*sizeof(double));
+
+  for(i=m-1; i>=0; i--){
+    sum=0;
+    for(j=i+1; j<= m-1; j++) {
+      sum+= M[i][j]*v[j];
+    }
+    v[i] = (b[i]-sum)/M[i][i];
+  }
+  return v;
+}
+
+double f1(double *x){
+  return 4*(x[0])-(x[1])+(x[2])-(x[0]*x[3]);
+}
+
+double f2(double *x){
+  return -(x[0])+3*(x[1])-2*(x[2])-(x[1]*x[3]);
+}
+
+double f3(double *x){
+  return x[0]-2*x[1]+3*x[2]-x[2]*x[3];
+}
+
+double f4(double *x){
+  return pow(x[0],2)+pow(x[1],2)+pow(x[2],2)-1;
+}
+
+void Jacobiana(double **J, double *x) {
+  J[0][0]=4-x[3];
+  J[0][1]=-1;
+  J[0][2]=1;
+  J[0][3]=-x[0];
+  J[1][0]=-1;
+  J[1][1]=3-x[3];
+  J[1][2]=-2;
+  J[1][3]=-x[1];
+  J[2][0]=1;
+  J[2][1]=-2;
+  J[2][2]=3-x[3];
+  J[2][3]=-x[2];
+  J[3][0]=2*x[0];
+  J[3][1]=2*x[1];
+  J[3][2]=2*x[2];
+  J[3][3]=0;
 }
 
 int main() {
-double **M, **C,*b ,*v,*d,*l1, dx, tolerance=1e-8;
-int m, n, l, i, it=0, p=0;
+int i, itera=0, m;
+double *b, *x, **J, **L, **U, norma, tol=1e-8, (*f[])(double*)={f1,f2,f3,f4}; 
 FILE *arq;
+  
+  x = LeVetor("chute1.dat", &m);
 
-M = LeMatriz("Matrix.dat",&m, &n);
-v = LeVetor("vetor.dat", &l);
+  J = (double **) malloc(m*sizeof(double *));
+  for(i=0; i<m;i++) J[i] = (double *) malloc((m+1)*sizeof(double));
 
-//teste
+  do{
+      Jacobiana(J, x);
+      for(i=0; i<m; i++) J[i][m] = -f[i](x);
 
-return 0;
+      LUPivot(J, &L, &U, &b, m, m+1);
+
+      b = SubstituicaoDireta(L, m, b);
+      b = SubstituicaoReversa(U, m, b);
+      itera++;
+
+      norma = NormaVetor(b, m, 0);
+      for(i=0; i<m; i++) x[i] += b[i];
+      printf("\n%2d ||b|| = %g\t ", itera, norma);
+      ImprimeVetor(x, m);
+  
+  }while ((norma>tol)&&(itera<20));
+
+  puts("");
+  printf("solucoes: ");
+  ImprimeVetor(x, m);
+  printf("\nx2 = (");
+  for(i=0;i<m-1;i++) printf("   %g   ", -x[i]);
+  printf("   %g   ", x[m-1]);
+  puts(")");
+  
+  return 0;
 }
