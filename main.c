@@ -255,7 +255,7 @@ void Jacobiana(double **J, double *x) {
 }
 
 int main() {
-int i, itera=0, m;
+int i, it=0, m;
 double *b, *x, *x2, *x3, **J, **L, **U, norma, tol=1e-8, (*f[])(double*)={f1,f2,f3,f4}; 
 FILE *arq;
   
@@ -276,12 +276,12 @@ FILE *arq;
 
       b = SubstituicaoDireta(L, m, b);
       b = SubstituicaoReversa(U, m, b);
-      itera++;
+      it++;
 
       norma = NormaVetor(b, m, 0);
       for(i=0; i<m; i++) x[i] += b[i];
   
-  }while ((norma>tol)&&(itera<20));
+  }while ((norma>tol)&&(it<20));
 
   puts("");
   printf("solucoes: ");
@@ -293,7 +293,8 @@ FILE *arq;
   printf("Chute 2:");
   ImprimeVetor(x2, m);
 
-  free(J);
+  J = (double **) malloc(m*sizeof(double *));
+  for(i=0; i<m;i++) J[i] = (double *) malloc((m+1)*sizeof(double));
 
   do{
       Jacobiana(J, x2);
@@ -303,12 +304,12 @@ FILE *arq;
 
       b = SubstituicaoDireta(L, m, b);
       b = SubstituicaoReversa(U, m, b);
-      itera++;
+      it++;
 
       norma = NormaVetor(b, m, 0);
       for(i=0; i<m; i++) x2[i] += b[i];
   
-  }while ((norma>tol)&&(itera<20));
+  }while ((norma>tol)&&(it<20));
 
   puts("");
   printf("solucoes: ");
@@ -320,8 +321,6 @@ FILE *arq;
   printf("Chute 3:");
   ImprimeVetor(x3, m);
 
-  J = (double **) malloc(m*sizeof(double *));
-  for(i=0; i<m;i++) J[i] = (double *) malloc((m+1)*sizeof(double));
 
   do{
       Jacobiana(J, x3);
@@ -331,12 +330,12 @@ FILE *arq;
 
       b = SubstituicaoDireta(L, m, b);
       b = SubstituicaoReversa(U, m, b);
-      itera++;
+      it++;
 
       norma = NormaVetor(b, m, 0);
       for(i=0; i<m; i++) x3[i] += b[i];
   
-  }while ((norma>tol)&&(itera<20));
+  }while ((norma>tol)&&(it<20));
 
   puts("");
   printf("solucoes: ");
